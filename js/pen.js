@@ -1,12 +1,8 @@
 var camera;
 var light;
-
 var paper;
 var scene;
-
-
-
-var penPath
+var penPath;
 var paperCanvas;
 var penGroup;
 var controls = new function() {
@@ -17,25 +13,21 @@ var controls = new function() {
 
 
 function init() {
-	paperCanvas = new PaperCanvas(500, 500, 50, 50);
+	paperCanvas = new PaperCanvas(512, 512, 64, 64);
 	
-	penPath = new PathCans("path", 300, 300, 50, 50, 2, controls.speed);
+	penPath = new PathCans("path", 256, 256, 64, 64, 2, controls.speed);
 	penPath.setRedrawCall(function(){
 		penGroup.clearTrack()
 		paperCanvas.clearPaper();
 	});
 	
-	
-	
-
 	var stats = new Stats();
-	stats.setMode(0); // 0: fps, 1: ms stats.domElement.style.position =
-	'absolute';
+	stats.setMode(0); // 0: fps, 1: ms 
+	stats.domElement.style.position = "absolute";
 	stats.domElement.style.left = '0px';
 	stats.domElement.style.top = '0px';
 	document.getElementById("Stats-output").appendChild(stats.domElement);
-
-
+	
 	var gui = new dat.GUI();
 	gui.add(controls, "direction", 0, 90).onChange(function(e){
 		penGroup.setDefectEularY(e/180*Math.PI);
@@ -45,7 +37,6 @@ function init() {
 		penPath.microStepLen = e;
 	});
 	gui.add(controls, "run");
-
 
 	var renderer = new THREE.WebGLRenderer();
 	renderer.setClearColorHex();
@@ -60,25 +51,21 @@ function init() {
 	var axes = new THREE.AxisHelper(20);
 	scene.add(axes);
 
-	var paperGeometry = new THREE.PlaneGeometry(50, 50);
-	//var paperMaterial = new THREE.MeshLambertMaterial({color: 0xffffff});
+	var paperGeometry = new THREE.PlaneGeometry(64, 64);
 	var paperMaterial = new THREE.MeshBasicMaterial({map: paperCanvas.texture});
-	//paperMaterial.side = THREE.DoubleSide;
 	paper = new THREE.Mesh(paperGeometry, paperMaterial);
 	paper.rotation.x = -0.5 * Math.PI;
-	paper.position.x = 25;
+	paper.position.x = 32;
 	paper.position.y = 0.5;
-	paper.position.z = 25;
+	paper.position.z = 32;
 	paper.receiveShadow = true;
 	scene.add(paper);
 	
 	penGroup = new PenGroup(2, paper.position.y);
 	scene.add(penGroup.group);
-	
 	penPath.inf.innerHTML = "("+penGroup.defectPos.x.toFixed(2)+" , "+penGroup.defectPos.z.toFixed(2)+")";
 
-	var pointColor = "#ffffff";
-	light = new THREE.SpotLight(pointColor);
+	light = new THREE.SpotLight("#ffffff");
 	light.position.set(400, 600, 800);
 	light.castShadow = true;
 	light.shadowCameraNear = 2;
@@ -89,43 +76,34 @@ function init() {
 	light.angle = 0.4;
 	scene.add(light);
 
-
-
 	document.getElementById("WebGL-output").appendChild(renderer.domElement);
 	var orbit = new THREE.OrbitControls(camera, renderer.domElement);
 	orbit.userPanSpeed = 0.3;
 	render();
 
-
 	function render() {
 		if (controls.run) {
 			penGroup.move(penPath.calePath(), paperCanvas);
 		};
-		//this.texture.needsUpdate = true;
-		//ballCansTexture.needsUpdate = true;
 		stats.update();
 		orbit.update();
 		requestAnimationFrame(render);
 		renderer.render(scene, camera);
 	}
-
 }
 window.onload = init;
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+/*
+类说明：用于加载场景中的小球，笔尖，环形箭头
+参数说明 r:小球半径， disH:纸张的高度，Y轴
+公用对象
+	this.group 其中包括笔珠、杂质、箭头灯模型
+接口函数
+function move(t,pCans);
+	函数说明 将penGroup移动并旋转到指定位置，并绘制纸张贴图
+	参数说明 t:包含当前笔珠坐标、欧拉角，pCans:纸张贴图管理类的实例
+*/
 function PenGroup(r, disH){
 	var self = this;
 	this.disH = disH;
@@ -259,6 +237,16 @@ function PenGroup(r, disH){
 	}
 }
 
+
+/*
+类说明：纸张贴图管理类，用于绘制纸张的贴图，贴图中展示了笔迹和杂质的痕迹，输入离散的小球位置和杂质位置
+参数说明 w:纸张贴图canvas的宽 h:纸张贴图canvas的长，pW:场景中纸张的宽，pH:场景中纸张的长
+接口函数
+	function clearPaper() 清空纸张贴图并更新
+	function draw(r1, x1, y1, x2, y2)
+		函数说明 在纸张贴图中绘制笔迹和杂质的痕迹，只是一个离散的点，
+		参数说明 r1:笔珠半径 x1 y1:笔珠坐标 x2 y2:笔珠上接近纸张的杂质的坐标
+*/
 function PaperCanvas(w,h,pW,pH){
 	this.cansW = w;
 	this.cansH = h;
@@ -304,6 +292,13 @@ function PaperCanvas(w,h,pW,pH){
 	}
 }
 
+
+/*类说明：在画面左下角添加一个的手绘canvas，响应用户手绘，并且输出离散的手绘路径
+参数说明：id:html中放置手绘canvas的div的ID，w:手绘canvas的宽，h:手绘canvas的长，pW:场景中纸张的宽，pH:场景中纸张的长，r:小球半径, misStep:手绘canvas中记录的每个点最后形成动画的步进，注意这里的步进长度是相对场景的
+接口函数
+	function setRedrawCall(f) 设置手绘区重新绘制时的回调函数
+	function setFinishDrawCall(f) 设置收回去完成一次绘制时的回调函数
+*/
 function PathCans(id, w, h, pW, pH, r, micStep) {
 	this.ballR = r;
 	this.w = w;
@@ -426,11 +421,11 @@ function PathCans(id, w, h, pW, pH, r, micStep) {
 			this.z2 = this.points[this.pathP + 1].y;
 			l = Math.sqrt((this.z - this.z2) * (this.z - this.z2) + (this.x - this.x2) * (this.x - this.x2));
 			this.curStepAmount = Math.ceil(l / this.microStepLen);
-			console.log(this.curStepAmount);
+			// console.log(this.curStepAmount);
 			this.curStepIndex = 0;
 			this.pathP += 1;
 		}
-		console.log("("+this.x.toFixed(3)+","+this.z.toFixed(3)+")->("+this.x2.toFixed(3)+","+this.z2.toFixed(3)+")");
+		// console.log("("+this.x.toFixed(3)+","+this.z.toFixed(3)+")->("+this.x2.toFixed(3)+","+this.z2.toFixed(3)+")");
 		posX = this.x + (this.x2 - this.x) / this.curStepAmount * this.curStepIndex;
 		posZ = this.z + (this.z2 - this.z) / this.curStepAmount * this.curStepIndex;
 		this.curStepIndex += 1;
@@ -445,7 +440,7 @@ function PathCans(id, w, h, pW, pH, r, micStep) {
 			rotY = Math.PI + Math.acos((posZ - posZ2) / l);
 		};
 
-		console.log(this.curStepIndex+"/"+this.curStepAmount+" ("+posX.toFixed(3)+","+posZ.toFixed(3)+")");
+		// console.log(this.curStepIndex+"/"+this.curStepAmount+" ("+posX.toFixed(3)+","+posZ.toFixed(3)+")");
 		return {
 			posZ: posZ,
 			posX: posX,
